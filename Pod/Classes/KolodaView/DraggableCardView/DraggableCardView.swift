@@ -94,7 +94,7 @@ public class DraggableCardView: UIView {
         
         self.contentView?.removeFromSuperview()
         self.contentView = view
-        configureContentView()
+//        configureContentView()
     }
     
     private func configureOverlayView() {

@@ -419,7 +419,6 @@ public class KolodaView: UIView, DraggableCardDelegate {
                 
                 currentCard.userInteractionEnabled = index == 0
                 frameAnimation.toValue = NSValue(CGRect: cardFrame)
-                currentCard.removeAnimations()
                 currentCard.pop_addAnimation(frameAnimation, forKey: "frameAnimation")
             }
         } else {
