@@ -86,7 +86,7 @@ public class DraggableCardView: UIView {
             self.overlayView = overlay
             overlay.alpha = 0;
             self.addSubview(overlay)
-            configureOverlayView()
+           // configureOverlayView()
             self.insertSubview(view, belowSubview: overlay)
         } else {
             self.addSubview(view)
@@ -94,7 +94,7 @@ public class DraggableCardView: UIView {
         
         self.contentView?.removeFromSuperview()
         self.contentView = view
-        configureContentView()
+//        configureContentView()
     }
     
     private func configureOverlayView() {
@@ -210,7 +210,7 @@ public class DraggableCardView: UIView {
     
             var transform = CATransform3DIdentity
             transform = CATransform3DScale(transform, scale, scale, 1)
-            transform = CATransform3DRotate(transform, rotationAngle, 0, 0, 1)
+//            transform = CATransform3DRotate(transform, rotationAngle, 0, 0, 1)
             transform = CATransform3DTranslate(transform, dragDistance.x, dragDistance.y, 0)
             layer.transform = transform
             
