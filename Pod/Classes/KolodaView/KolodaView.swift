@@ -146,10 +146,6 @@ public class KolodaView: UIView, DraggableCardDelegate {
                     let nextCardContentView = dataSource.koloda(self, viewForCardAtIndex: UInt(index+currentCardNumber))
                     let nextCardView = DraggableCardView(frame: frameForCardAtIndex(UInt(index)))
                     
-                    //Add scaling of view
-                    let scale = scaleForViewAtIndex(UInt(index))
-                    nextCardView.transform = CGAffineTransformMakeScale(scale, scale)
-
                     nextCardView.delegate = self
                     nextCardView.alpha = index == 0 ? alphaValueOpaque : alphaValueSemiTransparent
                     nextCardView.userInteractionEnabled = index == 0
@@ -167,10 +163,6 @@ public class KolodaView: UIView, DraggableCardDelegate {
     public func layoutDeck() {
         for (index, card) in self.visibleCards.enumerate() {
             card.frame = frameForCardAtIndex(UInt(index))
-            
-            //Add scaling of view
-            let scale = scaleForViewAtIndex(UInt(index))
-            card.transform = CGAffineTransformMakeScale(scale, scale)
         }
     }
     
@@ -224,10 +216,6 @@ public class KolodaView: UIView, DraggableCardDelegate {
                 }
             }
         }
-    }
-    
-    public func scaleForViewAtIndex(index: UInt) -> CGFloat {
-        return pow(backgroundCardScalePercent, CGFloat(index))
     }
     
     //MARK: Animations
@@ -360,10 +348,6 @@ public class KolodaView: UIView, DraggableCardDelegate {
                 let lastCardFrame = frameForCardAtIndex(UInt(currentCardNumber + visibleCards.count))
                 let lastCardView = DraggableCardView(frame: lastCardFrame)
                 
-                //Add scaling of view
-                let scale = scaleForViewAtIndex(UInt(currentCardNumber + visibleCards.count))
-                lastCardView.transform = CGAffineTransformMakeScale(scale, scale)
-                
                 lastCardView.hidden = true
                 lastCardView.userInteractionEnabled = true
                 
@@ -384,14 +368,15 @@ public class KolodaView: UIView, DraggableCardDelegate {
             
             for (index, currentCard) in visibleCards.enumerate() {
                 var frameAnimation: POPPropertyAnimation
-                var scaleAnimation: POPPropertyAnimation
+                if let delegateAnimation = delegate?.koloda(kolodaBackgroundCardAnimation: self) where delegateAnimation.property.name == kPOPViewFrame {
+                    frameAnimation = delegateAnimation
+                } else {
+                    frameAnimation = POPBasicAnimation(propertyNamed: kPOPViewFrame)
+                    (frameAnimation as! POPBasicAnimation).duration = backgroundCardFrameAnimationDuration
+                }
                 
-                frameAnimation = POPBasicAnimation(propertyNamed: kPOPViewFrame)
-                (frameAnimation as! POPBasicAnimation).duration = backgroundCardFrameAnimationDuration
-                scaleAnimation = POPBasicAnimation(propertyNamed: kPOPViewScaleXY)
-                (scaleAnimation as! POPBasicAnimation).duration = backgroundCardFrameAnimationDuration
-                
-                let shouldTransparentize = delegate?.kolodaShouldTransparentizeNextCard(self)
+                let shouldTransparentize = delegate?.koloda(kolodaShouldTransparentizeNextCard: self)
+                let cardFrame = frameForCardAtIndex(UInt(index))
                 
                 if index != 0 {
                     currentCard.alpha = alphaValueSemiTransparent
@@ -417,13 +402,8 @@ public class KolodaView: UIView, DraggableCardDelegate {
                 }
                 
                 currentCard.userInteractionEnabled = index == 0
-                let scale = scaleForViewAtIndex(UInt(index))
-                
-                scaleAnimation.toValue = NSValue(CGPoint: CGPointMake(scale, scale))
-                frameAnimation.toValue = NSValue(CGRect: frameForCardAtIndex(UInt(index)))
-                
+                frameAnimation.toValue = NSValue(CGRect: cardFrame)
                 currentCard.pop_addAnimation(frameAnimation, forKey: "frameAnimation")
-                currentCard.pop_addAnimation(scaleAnimation, forKey: "scaleAnimation")
             }
         } else {
             delegate?.koloda(self, didSwipedCardAtIndex: UInt(currentCardNumber - 1), inDirection: direction)
@@ -487,10 +467,6 @@ public class KolodaView: UIView, DraggableCardDelegate {
             
             for index in 1...cardsToAdd {
                 let nextCardView = DraggableCardView(frame: frameForCardAtIndex(UInt(index)))
-                
-                //Add scaling of view
-                let scale = scaleForViewAtIndex(UInt(index))
-                nextCardView.transform = CGAffineTransformMakeScale(scale, scale)
                 
                 nextCardView.alpha = alphaValueSemiTransparent
                 nextCardView.delegate = self

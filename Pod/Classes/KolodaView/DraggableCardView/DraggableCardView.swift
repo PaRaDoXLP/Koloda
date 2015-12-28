@@ -43,6 +43,8 @@ public class DraggableCardView: UIView {
     private var dragBegin = false
     private var dragDistance = CGPointZero
     private var actionMargin: CGFloat = 0.0
+    private var originalLocation: CGPoint = CGPoint(x: 0.0, y: 0.0)
+    private var firstTouch = true
     
     //MARK: Lifecycle
     init() {
@@ -86,7 +88,7 @@ public class DraggableCardView: UIView {
             self.overlayView = overlay
             overlay.alpha = 0;
             self.addSubview(overlay)
-           // configureOverlayView()
+            configureOverlayView()
             self.insertSubview(view, belowSubview: overlay)
         } else {
             self.addSubview(view)
@@ -94,7 +96,7 @@ public class DraggableCardView: UIView {
         
         self.contentView?.removeFromSuperview()
         self.contentView = view
-//        configureContentView()
+        configureContentView()
     }
     
     private func configureOverlayView() {
@@ -187,6 +189,11 @@ public class DraggableCardView: UIView {
         switch gestureRecognizer.state {
         case .Began:
             
+            if firstTouch {
+                originalLocation = center
+                firstTouch = false
+            }
+            
             let firstTouchPoint = gestureRecognizer.locationInView(self)
             let newAnchorPoint = CGPointMake(firstTouchPoint.x / bounds.width, firstTouchPoint.y / bounds.height)
             let oldPosition = CGPoint(x: bounds.size.width * layer.anchorPoint.x, y: bounds.size.height * layer.anchorPoint.y)
@@ -210,8 +217,8 @@ public class DraggableCardView: UIView {
     
             var transform = CATransform3DIdentity
             transform = CATransform3DScale(transform, scale, scale, 1)
-//            transform = CATransform3DRotate(transform, rotationAngle, 0, 0, 1)
-            transform = CATransform3DTranslate(transform, dragDistance.x, dragDistance.y, 0)
+            transform = CATransform3DRotate(transform, rotationAngle, 0, 0, 1)
+            transform = CATransform3DTranslate(transform, dragDistance.x, originalLocation.y, 0)
             layer.transform = transform
             
             updateOverlayWithFinishPercent(dragDistance.x / CGRectGetWidth(frame))
