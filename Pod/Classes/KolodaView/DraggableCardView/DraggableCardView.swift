@@ -186,6 +186,9 @@ public class DraggableCardView: UIView {
     func panGestureRecognized(gestureRecognizer: UIPanGestureRecognizer) {
         dragDistance = gestureRecognizer.translationInView(self)
         
+        NSLog("xDragDistance = %f", dragDistance.x)
+        NSLog("yDragDistance = %f", dragDistance.y)
+        
         let touchLocation = gestureRecognizer.locationInView(self)
         
         switch gestureRecognizer.state {
@@ -225,6 +228,7 @@ public class DraggableCardView: UIView {
             
             updateOverlayWithFinishPercent(dragDistance.x / CGRectGetWidth(frame))
             //100% - for proportion
+            
             delegate?.card(self, wasDraggedWithFinishPercent: min(fabs(dragDistance.x * 100 / CGRectGetWidth(frame)), 100), inDirection: dragDirection)
             
             break
@@ -261,9 +265,16 @@ public class DraggableCardView: UIView {
     }
     
     private func swipeMadeAction() {
-        if (abs(dragDistance.x) >= actionMargin) && (shouldSwipeLast()) {
-            swipeAction(dragDirection)
-        } else {
+        if (shouldSwipeLast())
+        {
+            if (abs(dragDistance.x) >= actionMargin) {
+                swipeAction(dragDirection)
+            } else {
+                resetViewPositionAndTransformations()
+            }
+        }
+        else
+        {
             resetViewPositionAndTransformations()
         }
     }
