@@ -29,7 +29,7 @@ KolodaView requires ARC.
 ------------------
 
 ```ruby
-pod 'Koloda', '~> 2.0.5'
+pod 'Koloda', '~> 2.0.8'
 ```
 
 Thread Safety
@@ -174,6 +174,15 @@ This method is called whenever the KolodaView recognizes card dragging event.
 func koloda(kolodaSwipeThresholdMargin koloda: KolodaView) -> CGFloat?
 ```
 Return the distance that a card may be dragged in order to trigger a swipe. The default behavior (or returning NIL) will set this threshold to half of the card's width
+```swift
+func koloda(kolodaDidResetCard koloda: KolodaView)
+```
+This method is fired after resetting the card.
+```swift
+func koloda(koloda: KolodaView, didShowCardAtIndex index: UInt)
+```
+This method is called after a card has been shown, after animation is complete
+
 
 Release Notes
 ----------------
