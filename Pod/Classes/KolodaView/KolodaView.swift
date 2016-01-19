@@ -15,6 +15,13 @@ public enum SwipeResultDirection {
     case Right
 }
 
+public enum AllowedSwipeDirection {
+    case All
+    case Left
+    case Right
+}
+
+
 //Default values
 private let defaultCountOfVisibleCards = 3
 private let backgroundCardsTopMargin: CGFloat = 4.0
@@ -58,7 +65,7 @@ public extension KolodaViewDataSource {
 }
 
 public protocol KolodaViewDelegate:class {
-    
+    func koloda(koloda: KolodaView, allowedDirectionToSwipeCardAtIndex index: UInt) -> AllowedSwipeDirection
     func koloda(koloda: KolodaView, didSwipedCardAtIndex index: UInt, inDirection direction: SwipeResultDirection)
     func koloda(kolodaDidRunOutOfCards koloda: KolodaView)
     func koloda(koloda: KolodaView, didSelectCardAtIndex index: UInt)
@@ -75,6 +82,7 @@ public protocol KolodaViewDelegate:class {
 
 public extension KolodaViewDelegate {
     
+    func koloda(koloda: KolodaView, allowedDirectionToSwipeCardAtIndex index: UInt) -> AllowedSwipeDirection {return .All}
     func koloda(koloda: KolodaView, didSwipedCardAtIndex index: UInt, inDirection direction: SwipeResultDirection) {}
     func koloda(kolodaDidRunOutOfCards koloda: KolodaView) {}
     func koloda(koloda: KolodaView, didSelectCardAtIndex index: UInt) {}
@@ -348,6 +356,12 @@ public class KolodaView: UIView, DraggableCardDelegate {
             return true
         }
     }
+    
+    func card(cardSwipeDirection card: DraggableCardView) -> AllowedSwipeDirection
+    {
+        return (delegate?.koloda(self, allowedDirectionToSwipeCardAtIndex: UInt(currentCardNumber)))!
+    }
+
     //MARK: Private
     private func clear() {
         currentCardNumber = 0
