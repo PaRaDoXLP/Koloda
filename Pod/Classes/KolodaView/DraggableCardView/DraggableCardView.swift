@@ -211,10 +211,8 @@ public class DraggableCardView: UIView {
             dragBegin = true
             
             animationDirection = touchLocation.y >= frame.size.height / 2 ? -1.0 : 1.0
-            
-            layer.shouldRasterize = true
-            
             break
+            
         case .Changed:
             let rotationStrength = min(dragDistance.x / CGRectGetWidth(frame), rotationMax)
             let rotationAngle = animationDirection * defaultRotationAngle * rotationStrength
@@ -230,8 +228,6 @@ public class DraggableCardView: UIView {
             break
         case .Ended:
             swipeMadeAction()
-            
-            layer.shouldRasterize = false
         default :
             break
         }
