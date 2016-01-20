@@ -189,7 +189,6 @@ public class DraggableCardView: UIView {
         
         NSLog("xDragDistance = %f", dragDistance.x)
         NSLog("yDragDistance = %f", dragDistance.y)
-        let direction = swipeDirection()
         
         let touchLocation = gestureRecognizer.locationInView(self)
         
@@ -217,22 +216,17 @@ public class DraggableCardView: UIView {
             
             break
         case .Changed:
-            if (direction == .All) ||
-                ((direction == .Right) && (dragDistance.x>=0)) ||
-                ((direction == .Left) && (dragDistance.x<=0))
-            {
-                let rotationStrength = min(dragDistance.x / CGRectGetWidth(frame), rotationMax)
-                let rotationAngle = animationDirection * defaultRotationAngle * rotationStrength
-                
-                var transform = CATransform3DIdentity
-                transform = CATransform3DRotate(transform, rotationAngle, 0, 0, 1)
-                transform = CATransform3DTranslate(transform, dragDistance.x, dragDistance.y, 0)
-                layer.transform = transform
-                
-                updateOverlayWithFinishPercent(dragDistance.x / CGRectGetWidth(frame))
-                //100% - for proportion
-                delegate?.card(self, wasDraggedWithFinishPercent: min(fabs(dragDistance.x * 100 / CGRectGetWidth(frame)), 100), inDirection: dragDirection)
-            }
+            let rotationStrength = min(dragDistance.x / CGRectGetWidth(frame), rotationMax)
+            let rotationAngle = animationDirection * defaultRotationAngle * rotationStrength
+            
+            var transform = CATransform3DIdentity
+            transform = CATransform3DRotate(transform, rotationAngle, 0, 0, 1)
+            transform = CATransform3DTranslate(transform, dragDistance.x, dragDistance.y, 0)
+            layer.transform = transform
+            
+            updateOverlayWithFinishPercent(dragDistance.x / CGRectGetWidth(frame))
+            //100% - for proportion
+            delegate?.card(self, wasDraggedWithFinishPercent: min(fabs(dragDistance.x * 100 / CGRectGetWidth(frame)), 100), inDirection: dragDirection)
             break
         case .Ended:
             swipeMadeAction()
@@ -272,24 +266,35 @@ public class DraggableCardView: UIView {
     }
     
     private func swipeMadeAction() {
+
+        let direction = swipeDirection()
+        
         if (shouldSwipeLast())
         {
-            if (abs(dragDistance.x) >= actionMargin)
+            if !(((direction == .Right) && (dragDistance.x<=0)) ||
+                ((direction == .Left) && (dragDistance.x>=0)))
             {
-                let direction = swipeDirection()
-                
-                if (direction == .All) ||
-                    ((direction == .Right) && (dragDistance.x>=0)) ||
-                    ((direction == .Left) && (dragDistance.x<=0))
+                if (abs(dragDistance.x) >= actionMargin)
                 {
-                    swipeAction(dragDirection)
-                }
-                if ((direction == .Right) && (dragDistance.x<=0)) ||
-                    ((direction == .Left) && (dragDistance.x>=0))
-                {
+                    if (direction == .All) ||
+                        ((direction == .Right) && (dragDistance.x>=0)) ||
+                        ((direction == .Left) && (dragDistance.x<=0))
+                    {
+                        swipeAction(dragDirection)
+                    }
+                    if ((direction == .Right) && (dragDistance.x<=0)) ||
+                        ((direction == .Left) && (dragDistance.x>=0))
+                    {
                         resetViewPositionAndTransformations()
+                    }
                 }
-            } else {
+                else
+                {
+                    resetViewPositionAndTransformations()
+                }
+            }
+            else
+            {
                 resetViewPositionAndTransformations()
             }
         }
@@ -324,17 +329,8 @@ public class DraggableCardView: UIView {
         delegate?.card(cardWasReset: self)
         removeAnimations()
 
-        let direction = swipeDirection()
-        
         let resetPositionAnimation = POPSpringAnimation(propertyNamed: kPOPLayerTranslationXY)
-        if direction == .All
-        {
-            resetPositionAnimation.fromValue = NSValue(CGPoint: CGPoint(x: dragDistance.x, y: dragDistance.y))
-        }
-        else
-        {
-            resetPositionAnimation.fromValue = NSValue(CGPoint: CGPoint(x: self.frame.origin.x, y: self.frame.origin.y))
-        }
+        resetPositionAnimation.fromValue = NSValue(CGPoint: CGPoint(x: dragDistance.x, y: dragDistance.y))
         resetPositionAnimation.toValue = NSValue(CGPoint: CGPointZero)
         resetPositionAnimation.springBounciness = cardResetAnimationSpringBounciness
         resetPositionAnimation.springSpeed = cardResetAnimationSpringSpeed
