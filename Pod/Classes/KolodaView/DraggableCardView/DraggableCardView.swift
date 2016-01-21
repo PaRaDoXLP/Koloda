@@ -16,7 +16,7 @@ protocol DraggableCardDelegate: class {
     func card(cardWasReset card: DraggableCardView)
     func card(cardWasTapped card: DraggableCardView)
     func card(cardSwipeThresholdMargin card: DraggableCardView) -> CGFloat?
-    func card(cardShouldSwipeLast card: DraggableCardView) -> Bool
+    func card(cardAllowSwipeLast card: DraggableCardView) -> Bool
     func card(cardSwipeDirection card: DraggableCardView) -> AllowedSwipeDirection
 }
 
@@ -185,51 +185,54 @@ public class DraggableCardView: UIView {
     
     //MARK: GestureRecognizers
     func panGestureRecognized(gestureRecognizer: UIPanGestureRecognizer) {
-        dragDistance = gestureRecognizer.translationInView(self)
-        
-        NSLog("xDragDistance = %f", dragDistance.x)
-        NSLog("yDragDistance = %f", dragDistance.y)
-        
-        let touchLocation = gestureRecognizer.locationInView(self)
-        
-        switch gestureRecognizer.state {
-        case .Began:
+        if (allowSwipeLast())
+        {
+            dragDistance = gestureRecognizer.translationInView(self)
             
-            if firstTouch {
-                originalLocation = center
-                firstTouch = false
+            NSLog("xDragDistance = %f", dragDistance.x)
+            NSLog("yDragDistance = %f", dragDistance.y)
+            
+            let touchLocation = gestureRecognizer.locationInView(self)
+            
+            switch gestureRecognizer.state {
+            case .Began:
+                
+                if firstTouch {
+                    originalLocation = center
+                    firstTouch = false
+                }
+                
+                let firstTouchPoint = gestureRecognizer.locationInView(self)
+                let newAnchorPoint = CGPointMake(firstTouchPoint.x / bounds.width, firstTouchPoint.y / bounds.height)
+                let oldPosition = CGPoint(x: bounds.size.width * layer.anchorPoint.x, y: bounds.size.height * layer.anchorPoint.y)
+                let newPosition = CGPoint(x: bounds.size.width * newAnchorPoint.x, y: bounds.size.height * newAnchorPoint.y)
+                layer.anchorPoint = newAnchorPoint
+                layer.position = CGPoint(x: layer.position.x - oldPosition.x + newPosition.x, y: layer.position.y - oldPosition.y + newPosition.y)
+                removeAnimations()
+                
+                dragBegin = true
+                
+                animationDirection = touchLocation.y >= frame.size.height / 2 ? -1.0 : 1.0
+                break
+                
+            case .Changed:
+                let rotationStrength = min(dragDistance.x / CGRectGetWidth(frame), rotationMax)
+                let rotationAngle = animationDirection * defaultRotationAngle * rotationStrength
+                
+                var transform = CATransform3DIdentity
+                transform = CATransform3DRotate(transform, rotationAngle, 0, 0, 1)
+                transform = CATransform3DTranslate(transform, dragDistance.x, dragDistance.y, 0)
+                layer.transform = transform
+                
+                updateOverlayWithFinishPercent(dragDistance.x / CGRectGetWidth(frame))
+                //100% - for proportion
+                delegate?.card(self, wasDraggedWithFinishPercent: min(fabs(dragDistance.x * 100 / CGRectGetWidth(frame)), 100), inDirection: dragDirection)
+                break
+            case .Ended:
+                swipeMadeAction()
+            default :
+                break
             }
-            
-            let firstTouchPoint = gestureRecognizer.locationInView(self)
-            let newAnchorPoint = CGPointMake(firstTouchPoint.x / bounds.width, firstTouchPoint.y / bounds.height)
-            let oldPosition = CGPoint(x: bounds.size.width * layer.anchorPoint.x, y: bounds.size.height * layer.anchorPoint.y)
-            let newPosition = CGPoint(x: bounds.size.width * newAnchorPoint.x, y: bounds.size.height * newAnchorPoint.y)
-            layer.anchorPoint = newAnchorPoint
-            layer.position = CGPoint(x: layer.position.x - oldPosition.x + newPosition.x, y: layer.position.y - oldPosition.y + newPosition.y)
-            removeAnimations()
-            
-            dragBegin = true
-            
-            animationDirection = touchLocation.y >= frame.size.height / 2 ? -1.0 : 1.0
-            break
-            
-        case .Changed:
-            let rotationStrength = min(dragDistance.x / CGRectGetWidth(frame), rotationMax)
-            let rotationAngle = animationDirection * defaultRotationAngle * rotationStrength
-            
-            var transform = CATransform3DIdentity
-            transform = CATransform3DRotate(transform, rotationAngle, 0, 0, 1)
-            transform = CATransform3DTranslate(transform, dragDistance.x, dragDistance.y, 0)
-            layer.transform = transform
-            
-            updateOverlayWithFinishPercent(dragDistance.x / CGRectGetWidth(frame))
-            //100% - for proportion
-            delegate?.card(self, wasDraggedWithFinishPercent: min(fabs(dragDistance.x * 100 / CGRectGetWidth(frame)), 100), inDirection: dragDirection)
-            break
-        case .Ended:
-            swipeMadeAction()
-        default :
-            break
         }
     }
     
@@ -237,9 +240,9 @@ public class DraggableCardView: UIView {
         delegate?.card(cardWasTapped: self)
     }
     
-    func shouldSwipeLast() -> Bool
+    func allowSwipeLast() -> Bool
     {
-       return (delegate?.card(cardShouldSwipeLast: self))!
+       return (delegate?.card(cardAllowSwipeLast: self))!
     }
     
     func swipeDirection() -> AllowedSwipeDirection
@@ -265,26 +268,19 @@ public class DraggableCardView: UIView {
 
         let direction = swipeDirection()
         
-        if (shouldSwipeLast())
+        if !(((direction == .Right) && (dragDistance.x<=0)) ||
+            ((direction == .Left) && (dragDistance.x>=0)))
         {
-            if !(((direction == .Right) && (dragDistance.x<=0)) ||
-                ((direction == .Left) && (dragDistance.x>=0)))
+            if (abs(dragDistance.x) >= actionMargin)
             {
-                if (abs(dragDistance.x) >= actionMargin)
+                if (direction == .All) ||
+                    ((direction == .Right) && (dragDistance.x>=0)) ||
+                    ((direction == .Left) && (dragDistance.x<=0))
                 {
-                    if (direction == .All) ||
-                        ((direction == .Right) && (dragDistance.x>=0)) ||
-                        ((direction == .Left) && (dragDistance.x<=0))
-                    {
-                        swipeAction(dragDirection)
-                    }
-                    if ((direction == .Right) && (dragDistance.x<=0)) ||
-                        ((direction == .Left) && (dragDistance.x>=0))
-                    {
-                        resetViewPositionAndTransformations()
-                    }
+                    swipeAction(dragDirection)
                 }
-                else
+                if ((direction == .Right) && (dragDistance.x<=0)) ||
+                    ((direction == .Left) && (dragDistance.x>=0))
                 {
                     resetViewPositionAndTransformations()
                 }

@@ -71,7 +71,7 @@ public protocol KolodaViewDelegate:class {
     func koloda(koloda: KolodaView, didSelectCardAtIndex index: UInt)
     func koloda(kolodaShouldApplyAppearAnimation koloda: KolodaView) -> Bool
     func koloda(kolodaShouldMoveBackgroundCard koloda: KolodaView) -> Bool
-    func koloda(kolodaShouldSwipeLastCard koloda: KolodaView) -> Bool
+    func koloda(kolodaAllowSwipeLastCard koloda: KolodaView) -> Bool
     func koloda(kolodaShouldTransparentizeNextCard koloda: KolodaView) -> Bool
     func koloda(kolodaBackgroundCardAnimation koloda: KolodaView) -> POPPropertyAnimation?
     func koloda(koloda: KolodaView, draggedCardWithFinishPercent finishPercent: CGFloat, inDirection direction: SwipeResultDirection)
@@ -88,7 +88,7 @@ public extension KolodaViewDelegate {
     func koloda(koloda: KolodaView, didSelectCardAtIndex index: UInt) {}
     func koloda(kolodaShouldApplyAppearAnimation koloda: KolodaView) -> Bool {return true}
     func koloda(kolodaShouldMoveBackgroundCard koloda: KolodaView) -> Bool {return true}
-    func koloda(kolodaShouldSwipeLastCard koloda: KolodaView) -> Bool {return true}
+    func koloda(kolodaAllowSwipeLastCard koloda: KolodaView) -> Bool {return true}
     func koloda(kolodaShouldTransparentizeNextCard koloda: KolodaView) -> Bool {return true}
     func koloda(kolodaBackgroundCardAnimation koloda: KolodaView) -> POPPropertyAnimation? {return nil}
     func koloda(koloda: KolodaView, draggedCardWithFinishPercent finishPercent: CGFloat, inDirection direction: SwipeResultDirection) {}
@@ -339,13 +339,13 @@ public class KolodaView: UIView, DraggableCardDelegate {
         return delegate?.koloda(kolodaSwipeThresholdMargin: self)
     }
     
-    func card(cardShouldSwipeLast card: DraggableCardView) -> Bool {
-        print(delegate?.koloda(kolodaShouldSwipeLastCard: self))
+    func card(cardAllowSwipeLast card: DraggableCardView) -> Bool {
+        print(delegate?.koloda(kolodaAllowSwipeLastCard: self))
         print((self.currentCardNumber == self.countOfCards - 1))
         print(self.currentCardNumber)
         print(self.countOfCards)
         print(self.countOfCards-1)
-        if let shouldSwipe = delegate?.koloda(kolodaShouldSwipeLastCard: self) where !shouldSwipe && (self.currentCardNumber == self.countOfCards-1)
+        if let shouldSwipe = delegate?.koloda(kolodaAllowSwipeLastCard: self) where !shouldSwipe && (self.currentCardNumber == self.countOfCards-1)
         {
             print("FALSE")
             return false
