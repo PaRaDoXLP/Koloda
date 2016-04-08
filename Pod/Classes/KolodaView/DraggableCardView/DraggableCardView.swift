@@ -18,12 +18,16 @@ protocol DraggableCardDelegate: class {
     func card(cardSwipeThresholdMargin card: DraggableCardView) -> CGFloat?
     func card(cardAllowSwipeLast card: DraggableCardView) -> Bool
     func card(cardSwipeDirection card: DraggableCardView) -> AllowedSwipeDirection
+    func card(shouldReturnCard card: DraggableCardView) -> Bool
+    func card(animateReturnedCard card: DraggableCardView)
+    
 }
 
 //Drag animation constants
 private let rotationMax: CGFloat = 1.0
 private let defaultRotationAngle = CGFloat(M_PI) / 10.0
 private let scaleMin: CGFloat = 0.8
+private var wasReturned: Bool = false
 public let cardSwipeActionAnimationDuration: NSTimeInterval  = 0.4
 public let lastCard: Bool = false
 
@@ -38,7 +42,7 @@ public class DraggableCardView: UIView {
     weak var delegate: DraggableCardDelegate?
     
     private var overlayView: OverlayView?
-    private(set) var contentView: UIView?
+    public var contentView: UIView?
     
     private var panGestureRecognizer: UIPanGestureRecognizer!
     private var tapGestureRecognizer: UITapGestureRecognizer!
@@ -192,6 +196,9 @@ public class DraggableCardView: UIView {
             NSLog("xDragDistance = %f", dragDistance.x)
             NSLog("yDragDistance = %f", dragDistance.y)
             
+            NSLog("xOrigin = %f", self.frame.origin.x)
+            NSLog("yOrigin = %f", self.frame.origin.y)
+            
             let touchLocation = gestureRecognizer.locationInView(self)
             
             switch gestureRecognizer.state {
@@ -248,6 +255,11 @@ public class DraggableCardView: UIView {
     func swipeDirection() -> AllowedSwipeDirection
     {
         return (delegate?.card(cardSwipeDirection: self))!
+    }
+    
+    func shouldReturnCard() -> Bool
+    {
+        return (delegate?.card(shouldReturnCard: self))!
     }
     
     //MARK: Private
@@ -311,9 +323,102 @@ public class DraggableCardView: UIView {
         translationAnimation.fromValue = POPLayerGetTranslationX(layer)
         translationAnimation.toValue = finishTranslation
         translationAnimation.completionBlock = { _, _ in
-            self.removeFromSuperview()
+            
+            if (self.shouldReturnCard() && (direction == .Right))
+            {
+                wasReturned = true
+                self.resetViewPositionAndTransformations()
+            }
+            else
+            {
+                self.removeFromSuperview()
+            }
         }
         layer.pop_addAnimation(translationAnimation, forKey: "swipeTranslationAnimation")
+    }
+    
+    func swipe(direction: SwipeResultDirection) {
+        if !dragBegin {
+            delegate?.card(self, wasSwipedInDirection: direction)
+            let startPosition:CGFloat = layer.position.x
+            let screenWidth = CGRectGetWidth(UIScreen.mainScreen().bounds)
+
+            let translation = screenWidth * 2.5
+            let directionMultiplier: CGFloat = direction == .Left ? -1 : 1
+            let finalPosition = directionMultiplier * translation
+            
+            let swipePositionAnimation = POPBasicAnimation(propertyNamed: kPOPLayerPositionX)
+            swipePositionAnimation.toValue = finalPosition
+            swipePositionAnimation.duration = cardSwipeActionAnimationDuration
+            swipePositionAnimation.completionBlock = {
+                (_, _) in
+                if (self.shouldReturnCard() && (direction == .Right))
+                {
+                    wasReturned = true
+                    self.resetViewPositionAndTransformationsSecond(direction, startPosition: startPosition)
+                }
+                else
+                {
+                    self.removeFromSuperview()
+                }
+            }
+            
+            layer.pop_addAnimation(swipePositionAnimation, forKey: "swipePositionAnimation")
+            
+            let swipeRotationAnimation = POPBasicAnimation(propertyNamed: kPOPLayerRotation)
+            swipeRotationAnimation.fromValue = POPLayerGetRotationZ(layer)
+            swipeRotationAnimation.toValue = CGFloat(direction == .Left ? -M_PI_4 : M_PI_4)
+            swipeRotationAnimation.duration = cardSwipeActionAnimationDuration
+            
+            layer.pop_addAnimation(swipeRotationAnimation, forKey: "swipeRotationAnimation")
+            
+            overlayView?.overlayState = direction == .Left ? .Left : .Right
+            let overlayAlphaAnimation = POPBasicAnimation(propertyNamed: kPOPViewAlpha)
+            overlayAlphaAnimation.toValue = 1.0
+            overlayAlphaAnimation.duration = cardSwipeActionAnimationDuration
+            overlayView?.pop_addAnimation(overlayAlphaAnimation, forKey: "swipeOverlayAnimation")
+        }
+
+    }
+
+    private func resetViewPositionAndTransformationsSecond(direction: SwipeResultDirection, startPosition: CGFloat)
+    {
+        
+        let resetPositionAnimation = POPBasicAnimation(propertyNamed: kPOPLayerPositionX)
+        resetPositionAnimation.toValue = startPosition
+        resetPositionAnimation.completionBlock = {
+            (_, _) in
+            self.layer.transform = CATransform3DIdentity
+            self.dragBegin = false
+            if wasReturned && self.shouldReturnCard()
+            {
+                self.delegate?.card(animateReturnedCard: self)
+                self.removeGestureRecognizer(self.panGestureRecognizer)
+                self.removeGestureRecognizer(self.tapGestureRecognizer)
+            }
+        }
+        
+        layer.pop_addAnimation(resetPositionAnimation, forKey: "resetPositionAnimation")
+        
+        let resetRotationAnimation = POPBasicAnimation(propertyNamed: kPOPLayerRotation)
+        resetRotationAnimation.fromValue = CGFloat(direction == .Left ? -M_PI_4 : M_PI_4)
+        resetRotationAnimation.toValue = CGFloat(0.0)
+        resetRotationAnimation.duration = cardResetAnimationDuration
+        
+        layer.pop_addAnimation(resetRotationAnimation, forKey: "resetRotationAnimation")
+        
+        let overlayAlphaAnimation = POPBasicAnimation(propertyNamed: kPOPViewAlpha)
+        overlayAlphaAnimation.toValue = 0.0
+        overlayAlphaAnimation.duration = cardResetAnimationDuration
+        overlayAlphaAnimation.completionBlock = { _, _ in
+            self.overlayView?.alpha = 0
+        }
+        overlayView?.pop_addAnimation(overlayAlphaAnimation, forKey: "resetOverlayAnimation")
+        
+        let resetScaleAnimation = POPBasicAnimation(propertyNamed: kPOPLayerScaleXY)
+        resetScaleAnimation.toValue = NSValue(CGPoint: CGPoint(x: 1.0, y: 1.0))
+        resetScaleAnimation.duration = cardResetAnimationDuration
+        layer.pop_addAnimation(resetScaleAnimation, forKey: "resetScaleAnimation")
     }
     
     private func resetViewPositionAndTransformations() {
@@ -322,7 +427,6 @@ public class DraggableCardView: UIView {
         removeAnimations()
 
         let resetPositionAnimation = POPSpringAnimation(propertyNamed: kPOPLayerTranslationXY)
-        resetPositionAnimation.fromValue = NSValue(CGPoint: CGPoint(x: dragDistance.x, y: dragDistance.y))
         resetPositionAnimation.toValue = NSValue(CGPoint: CGPointZero)
         resetPositionAnimation.springBounciness = cardResetAnimationSpringBounciness
         resetPositionAnimation.springSpeed = cardResetAnimationSpringSpeed
@@ -330,6 +434,12 @@ public class DraggableCardView: UIView {
             (_, _) in
             self.layer.transform = CATransform3DIdentity
             self.dragBegin = false
+            if wasReturned && self.shouldReturnCard()
+            {
+                self.delegate?.card(animateReturnedCard: self)
+                self.removeGestureRecognizer(self.panGestureRecognizer)
+                self.removeGestureRecognizer(self.tapGestureRecognizer)
+            }
         }
         
         layer.pop_addAnimation(resetPositionAnimation, forKey: "resetPositionAnimation")
@@ -359,37 +469,5 @@ public class DraggableCardView: UIView {
     func removeAnimations() {
         pop_removeAllAnimations()
         layer.pop_removeAllAnimations()
-    }
-    
-    func swipe(direction: SwipeResultDirection) {
-        if !dragBegin {
-            delegate?.card(self, wasSwipedInDirection: direction)
-            
-            let screenWidth = CGRectGetWidth(UIScreen.mainScreen().bounds)
-            let finalPosition = direction == .Left ? -screenWidth : 2 * screenWidth
-            
-            let swipePositionAnimation = POPBasicAnimation(propertyNamed: kPOPLayerPositionX)
-            swipePositionAnimation.toValue = finalPosition
-            swipePositionAnimation.duration = cardSwipeActionAnimationDuration
-            swipePositionAnimation.completionBlock = {
-                (_, _) in
-                self.removeFromSuperview()
-            }
-            
-            layer.pop_addAnimation(swipePositionAnimation, forKey: "swipePositionAnimation")
-            
-            let swipeRotationAnimation = POPBasicAnimation(propertyNamed: kPOPLayerRotation)
-            swipeRotationAnimation.fromValue = POPLayerGetRotationZ(layer)
-            swipeRotationAnimation.toValue = CGFloat(direction == .Left ? -M_PI_4 : M_PI_4)
-            swipeRotationAnimation.duration = cardSwipeActionAnimationDuration
-            
-            layer.pop_addAnimation(swipeRotationAnimation, forKey: "swipeRotationAnimation")
-            
-            overlayView?.overlayState = direction == .Left ? .Left : .Right
-            let overlayAlphaAnimation = POPBasicAnimation(propertyNamed: kPOPViewAlpha)
-            overlayAlphaAnimation.toValue = 1.0
-            overlayAlphaAnimation.duration = cardSwipeActionAnimationDuration
-            overlayView?.pop_addAnimation(overlayAlphaAnimation, forKey: "swipeOverlayAnimation")
-        }
     }
 }
