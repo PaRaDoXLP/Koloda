@@ -68,6 +68,7 @@ public protocol KolodaViewDelegate:class {
     func koloda(koloda: KolodaView, allowedDirectionToSwipeCardAtIndex index: UInt) -> AllowedSwipeDirection
     func koloda(koloda: KolodaView, shouldReturnCardAtIndex index: UInt) -> Bool
     func koloda(koloda: KolodaView, animateReturnedCard card: DraggableCardView, AtIndex: UInt)
+    
     func koloda(koloda: KolodaView, didSwipedCardAtIndex index: UInt, inDirection direction: SwipeResultDirection)
     func koloda(kolodaDidRunOutOfCards koloda: KolodaView)
     func koloda(koloda: KolodaView, didSelectCardAtIndex index: UInt)
@@ -86,7 +87,8 @@ public extension KolodaViewDelegate {
     
     func koloda(koloda: KolodaView, allowedDirectionToSwipeCardAtIndex index: UInt) -> AllowedSwipeDirection {return .All}
     func koloda(koloda: KolodaView, shouldReturnCardAtIndex index: UInt) -> Bool {return false}
-    func koloda(koloda: KolodaView, animateReturnedCard card: DraggableCardView, AtIndex: UInt) {}
+    func koloda(koloda: KolodaView, animateReturnedCard card: DraggableCardView, AtIndex index: UInt) {}
+    
     func koloda(koloda: KolodaView, didSwipedCardAtIndex index: UInt, inDirection direction: SwipeResultDirection) {}
     func koloda(kolodaDidRunOutOfCards koloda: KolodaView) {}
     func koloda(koloda: KolodaView, didSelectCardAtIndex index: UInt) {}
