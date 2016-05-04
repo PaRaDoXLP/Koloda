@@ -18,7 +18,6 @@ protocol DraggableCardDelegate: class {
     func card(cardSwipeThresholdMargin card: DraggableCardView) -> CGFloat?
     func card(cardAllowSwipeLast card: DraggableCardView) -> Bool
     func card(cardSwipeDirection card: DraggableCardView) -> AllowedSwipeDirection
-    func card(shouldReturnCard card: DraggableCardView) -> Bool
     func card(animateReturnedCard card: DraggableCardView)
     
 }
@@ -27,7 +26,6 @@ protocol DraggableCardDelegate: class {
 private let rotationMax: CGFloat = 1.0
 private let defaultRotationAngle = CGFloat(M_PI) / 10.0
 private let scaleMin: CGFloat = 0.8
-private var wasReturned: Bool = false
 public let cardSwipeActionAnimationDuration: NSTimeInterval  = 0.4
 public let lastCard: Bool = false
 
@@ -43,6 +41,8 @@ public class DraggableCardView: UIView {
     
     private var overlayView: OverlayView?
     public var contentView: UIView?
+    public var cardShouldReturn: Bool = false
+    public var wasReturned: Bool = false
     
     private var panGestureRecognizer: UIPanGestureRecognizer!
     private var tapGestureRecognizer: UITapGestureRecognizer!
@@ -88,7 +88,7 @@ public class DraggableCardView: UIView {
     }
     
     //MARK: Configurations
-    func configure(view: UIView, overlayView: OverlayView?) {
+    func configure(view: UIView, overlayView: OverlayView?, shouldReturn: Bool) {
         self.overlayView?.removeFromSuperview()
         self.contentView?.removeFromSuperview()
         
@@ -101,7 +101,7 @@ public class DraggableCardView: UIView {
         } else {
             self.addSubview(view)
         }
-        
+        self.cardShouldReturn = shouldReturn
         self.contentView = view
         configureContentView()
     }
@@ -193,11 +193,11 @@ public class DraggableCardView: UIView {
         {
             dragDistance = gestureRecognizer.translationInView(self)
             
-            NSLog("xDragDistance = %f", dragDistance.x)
-            NSLog("yDragDistance = %f", dragDistance.y)
-            
-            NSLog("xOrigin = %f", self.frame.origin.x)
-            NSLog("yOrigin = %f", self.frame.origin.y)
+//            NSLog("xDragDistance = %f", dragDistance.x)
+//            NSLog("yDragDistance = %f", dragDistance.y)
+//            
+//            NSLog("xOrigin = %f", self.frame.origin.x)
+//            NSLog("yOrigin = %f", self.frame.origin.y)
             
             let touchLocation = gestureRecognizer.locationInView(self)
             
@@ -255,11 +255,6 @@ public class DraggableCardView: UIView {
     func swipeDirection() -> AllowedSwipeDirection
     {
         return (delegate?.card(cardSwipeDirection: self))!
-    }
-    
-    func shouldReturnCard() -> Bool
-    {
-        return (delegate?.card(shouldReturnCard: self))!
     }
     
     //MARK: Private
@@ -324,9 +319,8 @@ public class DraggableCardView: UIView {
         translationAnimation.toValue = finishTranslation
         translationAnimation.completionBlock = { _, _ in
             
-            if (self.shouldReturnCard() && (direction == .Right))
+            if (self.cardShouldReturn && (direction == .Right) && !self.wasReturned)
             {
-                wasReturned = true
                 self.resetViewPositionAndTransformations()
             }
             else
@@ -352,9 +346,8 @@ public class DraggableCardView: UIView {
             swipePositionAnimation.duration = cardSwipeActionAnimationDuration
             swipePositionAnimation.completionBlock = {
                 (_, _) in
-                if (self.shouldReturnCard() && (direction == .Right))
+                if (self.cardShouldReturn && (direction == .Right) && !self.wasReturned)
                 {
-                    wasReturned = true
                     self.resetViewPositionAndTransformationsSecond(direction, startPosition: startPosition)
                 }
                 else
@@ -390,9 +383,10 @@ public class DraggableCardView: UIView {
             (_, _) in
             self.layer.transform = CATransform3DIdentity
             self.dragBegin = false
-            if wasReturned && self.shouldReturnCard()
+            if self.cardShouldReturn
             {
                 self.delegate?.card(animateReturnedCard: self)
+                self.wasReturned = true
                 self.removeGestureRecognizer(self.panGestureRecognizer)
                 self.removeGestureRecognizer(self.tapGestureRecognizer)
             }
@@ -434,9 +428,10 @@ public class DraggableCardView: UIView {
             (_, _) in
             self.layer.transform = CATransform3DIdentity
             self.dragBegin = false
-            if wasReturned && self.shouldReturnCard()
+            if self.cardShouldReturn
             {
                 self.delegate?.card(animateReturnedCard: self)
+                self.wasReturned = true
                 self.removeGestureRecognizer(self.panGestureRecognizer)
                 self.removeGestureRecognizer(self.tapGestureRecognizer)
             }
